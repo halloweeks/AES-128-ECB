@@ -12,6 +12,7 @@
 
 #define AES_BLOCK_SIZE 16
 #define AES_KEY_SIZE 16
+#define AES_12_ROUND_KEYS 52
 
 #include <stdio.h>
 #include <unistd.h>
