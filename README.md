@@ -55,12 +55,12 @@ int main(int argc, const char *argv[]) {
 
 ##include header
 
-```
+```c
 #include "aes_modified_rolled.h"
 ```
 OR
-```
-#include "aes_modified_unrolled.h
+```c
+#include "aes_modified_unrolled.h"
 ```
 
 ```c
