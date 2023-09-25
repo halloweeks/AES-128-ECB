@@ -17,7 +17,7 @@ OR
 ```c
 #include <stdio.h>
 
-/** That is standard version of aes 128 ecb, 10 round **/
+/** This is standard version of aes 128 ecb, 10 round **/
 #include "aes_standard_rolled.h"
 
 void output(const char* title, uint8_t *data) {
@@ -66,7 +66,7 @@ OR
 ```c
 #include <stdio.h>
 
-/** That is modified version of aes 128 ecb, modified 10 round to 12 **/
+/** This is modified version of aes 128 ecb, modified 10 round to 12 **/
 #include "aes_modified_rolled.h"
 
 void output(const char* title, uint8_t *data) {
