@@ -75,6 +75,3 @@ Contributions and feedback are welcome! If you find issues or have ideas for imp
 ## License
 
 This custom AES-128 implementation is provided under the [MIT License](./LICENSE).
-```
-
-This updated README.md provides detailed instructions on how to use the AES-128 encryption and decryption functions in your custom implementation.
