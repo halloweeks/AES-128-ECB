@@ -1,5 +1,3 @@
-# Custom AES-128 Encryption Implementation with 12 Rounds
-
 ## Overview
 
 This GitHub repository contains a custom implementation of the Advanced Encryption Standard (AES) with a focus on AES-128 encryption. It features an enhanced version with 12 rounds for improved security and cryptographic strength.
