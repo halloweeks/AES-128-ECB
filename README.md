@@ -1,102 +1,80 @@
-# AES-128-ECB
-This GitHub repository contains two header files for AES-128 ECB encryption: one for the standard AES-128 ECB algorithm and another for a modified version with 12 rounds instead of the standard 10. Enhance your project's security by choosing between the two variants.
+# Custom AES-128 Encryption Implementation with 12 Rounds
 
-## Example standard aes 128 ecb
+## Overview
 
-## Include header
+This GitHub repository contains a custom implementation of the Advanced Encryption Standard (AES) with a focus on AES-128 encryption. It features an enhanced version with 12 rounds for improved security and cryptographic strength.
+
+## Features
+
+- **Extended Rounds:** This custom AES-128 variant includes 12 rounds, offering enhanced resistance to attacks and increased security.
+
+- **Static Rcon Values:** Rcon values have been expanded to support 12 rounds, allowing flexibility in key expansion without the need for dynamic generation.
 
 
-```c
-#include "aes_standard_rolled.h"
-```
-OR
-```c
-#include "aes_standard_unrolled.h"
-```
+- **Fixed Block Size:** This implementation enforces a fixed block size of 16 bytes, and it does not support padding. Input data must be exactly 16 bytes in length.
 
-```c
-#include <stdio.h>
 
-/** This is standard version of aes 128 ecb, 10 round **/
-#include "aes_standard_rolled.h"
+- **Incompatibility with Standard AES-128:** Please note that this custom AES-128 implementation with 12 rounds is not compatible with the standard AES-128 algorithm, which uses only 10 rounds. Data encrypted using this modified version cannot be decrypted using the standard AES-128 algorithm.
 
-void output(const char* title, uint8_t *data) {
-	printf("%s", title);
-	for (uint8_t index = 0; index < AES_BLOCK_SIZE; index++) {
-		printf("%02X", data[index]);
-	}
-	printf("\n");
-}
+## Usage
 
-int main(int argc, const char *argv[]) {
-	uint8_t key[AES_KEY_SIZE];
-	uint8_t data[AES_BLOCK_SIZE];
-	uint32_t roundkey[AES_10_ROUND_KEYS];
-	
-	memcpy(key, "This is aes key!", AES_KEY_SIZE);
-	memcpy(data, "This is aes ecb!", AES_BLOCK_SIZE);
-	
-	output("Original:  0x", data);
-	
-	AesEncryptExpand(roundkey, key);
-	AesEncrypt(roundkey, data, data);
-	
-	output("Encrypted: 0x", data);
-	
-	AesDecryptExpand(roundkey, key);
-	AesDecrypt(roundkey, data, data);
-	
-	output("Decrypted: 0x", data);
-	return 0;
-}
-```
+To utilize this custom AES-128 implementation with 12 rounds, follow the instructions provided below:
 
-## Example modified version of aes 128 ecb 
+### Include "AES.h" in Your Code
 
-##include header
+Before using the AES encryption and decryption functions, make sure to include the "AES.h" header in your code.
 
 ```c
-#include "aes_modified_rolled.h"
+#include "AES.h"
 ```
-OR
+
+### AES Context
+
+Before using the AES encryption and decryption functions, you need to initialize an AES context. This context stores the encryption/decryption state.
+
 ```c
-#include "aes_modified_unrolled.h"
+AES_CTX ctx;
 ```
+
+### Initialize Encryption
+
+To perform encryption, initialize the AES context and provide the encryption key.
 
 ```c
-#include <stdio.h>
-
-/** This is modified version of aes 128 ecb, modified 10 round to 12 **/
-#include "aes_modified_rolled.h"
-
-void output(const char* title, uint8_t *data) {
-	printf("%s", title);
-	for (uint8_t index = 0; index < AES_BLOCK_SIZE; index++) {
-		printf("%02X", data[index]);
-	}
-	printf("\n");
-}
-
-int main(int argc, const char *argv[]) {
-	uint8_t key[AES_KEY_SIZE];
-	uint8_t data[AES_BLOCK_SIZE];
-	uint32_t roundkey[AES_12_ROUND_KEYS];
-	
-	memcpy(key, "This is aes key!", AES_KEY_SIZE);
-	memcpy(data, "This is aes ecb!", AES_BLOCK_SIZE);
-	
-	output("Original:  0x", data);
-	
-	AesEncryptExpand(roundkey, key);
-	AesEncrypt(roundkey, data, data);
-	
-	output("Encrypted: 0x", data);
-	
-	AesDecryptExpand(roundkey, key);
-	AesDecrypt(roundkey, data, data);
-	
-	output("Decrypted: 0x", data);
-	return 0;
-}
+AES_EncryptInit(&ctx, key);
 ```
 
+### Encryption Function
+
+The AES encryption function allows you to encrypt a single 16-byte block.
+
+```c
+AES_Encrypt(&ctx, plaintext, ciphertext);
+```
+
+### Initialize Decryption
+
+To perform decryption, initialize the AES context with the same key used for encryption.
+
+```c
+AES_DecryptInit(&ctx, key);
+```
+
+### Decryption Function
+
+The AES decryption function allows you to decrypt a single 16-byte block.
+
+```c
+AES_Decrypt(&ctx, ciphertext, plaintext);
+```
+
+## Contributions
+
+Contributions and feedback are welcome! If you find issues or have ideas for improvements, please open an issue or submit a pull request.
+
+## License
+
+This custom AES-128 implementation is provided under the [MIT License](./LICENSE).
+```
+
+This updated README.md provides detailed instructions on how to use the AES-128 encryption and decryption functions in your custom implementation.
