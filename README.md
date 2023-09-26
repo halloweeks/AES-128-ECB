@@ -68,6 +68,48 @@ The AES decryption function allows you to decrypt a single 16-byte block.
 AES_Decrypt(&ctx, ciphertext, plaintext);
 ```
 
+### Example Code (main.c)
+
+Here's an example code snippet in C for using this custom AES-128 implementation:
+
+```c
+#include <stdio.h>
+#include "AES.h"
+
+void output(const char* title, uint8_t *data) {
+	printf("%s", title);
+	for (uint8_t index = 0; index < AES_BLOCK_SIZE; index++) {
+		printf("%02X", data[index]);
+	}
+	printf("\n");
+}
+
+int main(int argc, const char *argv[]) {
+	uint8_t key[AES_KEY_SIZE];
+	uint8_t data[AES_BLOCK_SIZE];
+	
+	memcpy(key, "This is aes key!", AES_KEY_SIZE);
+	memcpy(data, "This is test msg", AES_BLOCK_SIZE);
+	
+	output("Original:  ", data);
+	
+	AES_CTX ctx;
+	
+	AES_EncryptInit(&ctx, key);
+	
+	AES_Encrypt(&ctx, data, data);
+	
+	output("Encrypted: ", data);
+	
+	AES_DecryptInit(&ctx, key);
+	
+	AES_Decrypt(&ctx, data, data);
+	
+	output("Decrypted: ", data);
+	return 0;
+}
+```
+
 ## Contributions
 
 Contributions and feedback are welcome! If you find issues or have ideas for improvements, please open an issue or submit a pull request.
