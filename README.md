@@ -1,34 +1,30 @@
 ## Overview
 
-This GitHub repository contains a custom implementation of the Advanced Encryption Standard (AES) with a focus on AES-128 encryption. It features an enhanced version with 12 rounds for improved security and cryptographic strength.
+This GitHub repository contains a standard implementation of the Advanced Encryption Standard (AES) with a focus on AES-128 ECB (Electronic Codebook) encryption. AES-128 is a widely adopted encryption standard known for its security and efficiency.
 
 ## Features
 
-- **Extended Rounds:** This custom AES-128 variant includes 12 rounds, offering enhanced resistance to attacks and increased security.
+- **AES-128 ECB:** This implementation adheres to the AES-128 ECB encryption mode, which encrypts individual 16-byte blocks of data independently. It supports the encryption of multiple 16-byte blocks in sequence.
 
-- **Static Rcon Values:** Rcon values have been expanded to support 12 rounds, allowing flexibility in key expansion without the need for dynamic generation.
+- **Fixed Block Size:** The algorithm enforces a fixed block size of 16 bytes, and it does not support padding. Input data must be exactly 16 bytes in length for each block.
 
-
-- **Fixed Block Size:** This implementation enforces a fixed block size of 16 bytes, and it does not support padding. Input data must be exactly 16 bytes in length.
-
-
-- **Incompatibility with Standard AES-128:** Please note that this custom AES-128 implementation with 12 rounds is not compatible with the standard AES-128 algorithm, which uses only 10 rounds. Data encrypted using this modified version cannot be decrypted using the standard AES-128 algorithm.
+- **Compatibility:** Data encrypted using this standard AES-128 ECB algorithm can be decrypted using any compliant AES-128 ECB decryption implementation.
 
 ## Usage
 
-To utilize this custom AES-128 implementation with 12 rounds, follow the instructions provided below:
+To utilize this standard AES-128 ECB implementation, follow the instructions provided below:
 
-### Include "AES.h" in Your Code
+### Including "AES.h" Header
 
-Before using the AES encryption and decryption functions, make sure to include the "AES.h" header in your code.
+Before utilizing the AES encryption and decryption functions, ensure that you've included the "AES.h" header in your code. This header provides access to the AES functionality.
 
 ```c
 #include "AES.h"
 ```
 
-### AES Context
+### AES Context Initialization
 
-Before using the AES encryption and decryption functions, you need to initialize an AES context. This context stores the encryption/decryption state.
+To perform AES encryption and decryption, you must initialize an AES context. This context serves as a container for maintaining the encryption and decryption state.
 
 ```c
 AES_CTX ctx;
@@ -44,10 +40,10 @@ AES_EncryptInit(&ctx, key);
 
 ### Encryption Function
 
-The AES encryption function allows you to encrypt a single 16-byte block.
+The AES encryption function allows you to encrypt multiple 16-byte blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide data blocks of precisely 16 bytes each for encryption.
 
 ```c
-AES_Encrypt(&ctx, plaintext, ciphertext);
+AES_Encrypt(&ctx, plaintext, plaintext_size, ciphertext);
 ```
 
 ### Initialize Decryption
@@ -60,15 +56,23 @@ AES_DecryptInit(&ctx, key);
 
 ### Decryption Function
 
-The AES decryption function allows you to decrypt a single 16-byte block.
+The AES decryption function allows you to decrypt multiple 16-byte blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide ciphertext blocks of precisely 16 bytes each for decryption.
 
 ```c
-AES_Decrypt(&ctx, ciphertext, plaintext);
+AES_Decrypt(&ctx, ciphertext, ciphertext_size, plaintext);
+```
+
+### Encryption and Decryption Function Completion
+
+After you have finished using the AES encryption and decryption functions and no longer require the AES context, it's essential to clear sensitive information from memory. Use the following function to achieve this:
+
+```c
+AES_CTX_Free(&ctx);
 ```
 
 ### Example Code (main.c)
 
-Here's an example code snippet in C for using this custom AES-128 implementation:
+Here's an example code snippet in C for using this standard AES-128 ECB implementation:
 
 ```c
 #include <stdio.h>
@@ -95,15 +99,17 @@ int main(int argc, const char *argv[]) {
 	
 	AES_EncryptInit(&ctx, key);
 	
-	AES_Encrypt(&ctx, data, data);
+	AES_Encrypt(&ctx, data, AES_BLOCK_SIZE, data);
 	
 	output("Encrypted: ", data);
 	
 	AES_DecryptInit(&ctx, key);
 	
-	AES_Decrypt(&ctx, data, data);
+	AES_Decrypt(&ctx, data, AES_BLOCK_SIZE, data);
 	
 	output("Decrypted: ", data);
+	
+	AES_CTX_Free(&ctx);
 	return 0;
 }
 ```
@@ -114,4 +120,4 @@ Contributions and feedback are welcome! If you find issues or have ideas for imp
 
 ## License
 
-This custom AES-128 implementation is provided under the [MIT License](./LICENSE).
+This standard AES-128 ECB implementation is provided under the [MIT License](./LICENSE).
