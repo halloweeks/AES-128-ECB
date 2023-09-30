@@ -1,21 +1,9 @@
-/***********************************************************************************
- *                     Modified AES-128 Plus (12 Rounds) ECB                      *
- * This header file contains functions for a modified version of AES-128 ECB       *
- * encryption and decryption. This modified algorithm increases the number of      *
- * rounds from the standard 10 to 12, enhancing security.                           *
- * Modified by halloweeks                                                         *
- ***********************************************************************************/
-
-
-#ifndef __AES_128_PLUS_H__
-#define __AES_128_PLUS_H__
+#ifndef __AES_128_H__
+#define __AES_128_H__
 
 #define AES_BLOCK_SIZE 16
 #define AES_KEY_SIZE 16
-#define AES_12_ROUND_KEYS 52
 
-#include <stdio.h>
-#include <unistd.h>
 #include <stdint.h>
 
 #define GETU32(plaintext) (((uint32_t)(plaintext)[0] << 24) ^ \
@@ -27,6 +15,7 @@
 							  (ciphertext)[1] = (uint8_t)((st) >> 16); \
 							  (ciphertext)[2] = (uint8_t)((st) >>  8); \
 							  (ciphertext)[3] = (uint8_t)((st) >>  0); }
+
 
 static const uint32_t Te0[256] =
 {
@@ -708,22 +697,15 @@ static const uint32_t Td4[256] =
 	0x55555555U, 0x21212121U, 0x0c0c0c0cU, 0x7d7d7d7dU,
 };
 
-static const uint32_t rcon[12] = {
+static const uint32_t rcon[10] = {
 	0x01000000, 0x02000000, 0x04000000, 0x08000000,
 	0x10000000, 0x20000000, 0x40000000, 0x80000000,
-	0x1B000000, 0x36000000, 0x6C000000, 0xD8000000
+	0x1B000000, 0x36000000
 };
 
 typedef struct {
-	uint32_t roundkey[AES_12_ROUND_KEYS];
+	uint32_t roundkey[44];
 } AES_CTX;
-
-static inline uint32_t SubWord(uint32_t word) {
-	return (Te4[(word >> 16) & 0xff] & 0xff000000) ^ 
-		(Te4[(word >>  8) & 0xff] & 0x00ff0000) ^ 
-		(Te4[(word >>  0) & 0xff] & 0x0000ff00) ^ 
-		(Te4[(word >> 24) & 0xff] & 0x000000ff);
-}
 
 static inline void AES_EncryptInit(AES_CTX *ctx, const uint8_t *key) {
 	ctx->roundkey[0] = GETU32(key + 0);
@@ -731,8 +713,12 @@ static inline void AES_EncryptInit(AES_CTX *ctx, const uint8_t *key) {
 	ctx->roundkey[2] = GETU32(key + 8);
 	ctx->roundkey[3] = GETU32(key + 12);
 	
-	for (uint8_t index = 4; index < 52; index += 4) {
-		ctx->roundkey[index] = ctx->roundkey[index - 4] ^ SubWord(ctx->roundkey[index - 1]) ^ rcon[index / 4 - 1];
+	for (uint8_t index = 4; index < 44; index += 4) {
+		ctx->roundkey[index] = ctx->roundkey[index - 4] ^ 
+			(Te4[(ctx->roundkey[index - 1] >> 16) & 0xff] & 0xff000000) ^ 
+			(Te4[(ctx->roundkey[index - 1] >>  8) & 0xff] & 0x00ff0000) ^ 
+			(Te4[(ctx->roundkey[index - 1] >>  0) & 0xff] & 0x0000ff00) ^ 
+			(Te4[(ctx->roundkey[index - 1] >> 24) & 0xff] & 0x000000ff) ^ rcon[index / 4 - 1];
 		ctx->roundkey[index + 1] = ctx->roundkey[index - 3] ^ ctx->roundkey[index];
 		ctx->roundkey[index + 2] = ctx->roundkey[index - 2] ^ ctx->roundkey[index + 1];
 		ctx->roundkey[index + 3] = ctx->roundkey[index - 1] ^ ctx->roundkey[index + 2];
@@ -745,7 +731,7 @@ static inline void AES_DecryptInit(AES_CTX *ctx, const uint8_t *key) {
 	uint32_t temp;
 	
 	// Next, invert the order of the round keys.
-    for (uint8_t i = 0, j = 48; i < j; i += 4, j -= 4) {
+    for (uint8_t i = 0, j = 40; i < j; i += 4, j -= 4) {
         temp = ctx->roundkey[i + 0];
         ctx->roundkey[i + 0] = ctx->roundkey[j + 0];
         ctx->roundkey[j + 0] = temp;
@@ -764,7 +750,7 @@ static inline void AES_DecryptInit(AES_CTX *ctx, const uint8_t *key) {
     }
 
     // Finally, apply the inverse MixColumn transform to all round keys except the first and last.
-    for (uint8_t index = 4; index < 48; index += 4) {
+    for (uint8_t index = 4; index < 40; index += 4) {
         ctx->roundkey[index] =
             Td0[Te4[(ctx->roundkey[index] >> 24) & 0xff] & 0xff] ^
             Td1[Te4[(ctx->roundkey[index] >> 16) & 0xff] & 0xff] ^
@@ -788,193 +774,184 @@ static inline void AES_DecryptInit(AES_CTX *ctx, const uint8_t *key) {
     }
 }
 
-static inline void AES_Encrypt(const AES_CTX *ctx, const uint8_t plaintext[AES_BLOCK_SIZE], uint8_t ciphertext[AES_BLOCK_SIZE]) {
-	uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
+// static inline uint32_t AES_Encrypt(const AES_CTX *ctx, const uint8_t *plaintext, uint32_t size, uint8_t *ciphertext) {
+static inline uint32_t AES_Encrypt(const AES_CTX *ctx, const uint8_t *plaintext, uint32_t size, uint8_t *ciphertext) {
+	uint32_t s0, s1, s2, s3, t0, t1, t2, t3, offset;
 	
-	s0 = GETU32(plaintext +  0) ^ ctx->roundkey[0];
-	s1 = GETU32(plaintext +  4) ^ ctx->roundkey[1];
-	s2 = GETU32(plaintext +  8) ^ ctx->roundkey[2];
-	s3 = GETU32(plaintext + 12) ^ ctx->roundkey[3];
-	
-	t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[ 4];
-	t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[ 5];
-	t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[ 6];
-	t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[ 7];
+	for (offset = 0; offset + AES_BLOCK_SIZE <= size; offset += AES_BLOCK_SIZE) {
+		s0 = GETU32(plaintext + offset +  0) ^ ctx->roundkey[0];
+		s1 = GETU32(plaintext + offset +  4) ^ ctx->roundkey[1];
+		s2 = GETU32(plaintext + offset +  8) ^ ctx->roundkey[2];
+		s3 = GETU32(plaintext + offset + 12) ^ ctx->roundkey[3];
 		
-	s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[ 8];
-	s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[ 9];
-	s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[10];
-	s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[11];
-	
-	t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[12];
-	t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[13];
-	t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[14];
-	t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[15];
-	
-	s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[16];
-	s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[17];
-	s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[18];
-	s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[19];
-	
-	t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[20];
-	t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[21];
-	t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[22];
-	t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[23];
-	
-	s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[24];
-	s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[25];
-	s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[26];
-	s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[27];
-	
-	t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[28];
-	t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[29];
-	t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[30];
-	t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[31];
-	
-	s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[32];
-	s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[33];
-	s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[34];
-	s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[35];
-	
-	t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[36];
-	t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[37];
-	t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[38];
-	t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[39];
-	
-	s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[40];
-	s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[41];
-	s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[42];
-	s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[43];
-	
-	t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[44];
-	t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[45];
-	t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[46];
-	t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[47];
-	
-	// Apply the final round and map the cipher state to a byte array block:
-	s0 = 
-		(Te4[(t0 >> 24) & 0xff] & 0xff000000) ^ 
-		(Te4[(t1 >> 16) & 0xff] & 0x00ff0000) ^ 
-		(Te4[(t2 >>  8) & 0xff] & 0x0000ff00) ^ 
-		(Te4[(t3 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[48];
-	PUTU32(ciphertext, s0);
-
-	s1 =	 
-		(Te4[(t1 >> 24) & 0xff] & 0xff000000) ^
-		(Te4[(t2 >> 16) & 0xff] & 0x00ff0000) ^
-		(Te4[(t3 >>  8) & 0xff] & 0x0000ff00) ^
-		(Te4[(t0 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[49];
-	PUTU32(ciphertext + 4, s1);
-
-	s2 = 
-		(Te4[(t2 >> 24) & 0xff] & 0xff000000) ^
-		(Te4[(t3 >> 16) & 0xff] & 0x00ff0000) ^
-		(Te4[(t0 >>  8) & 0xff] & 0x0000ff00) ^
-		(Te4[(t1 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[50];
-	PUTU32(ciphertext + 8, s2);
-
-	s3 = 
-		(Te4[(t3 >> 24) & 0xff] & 0xff000000) ^
-		(Te4[(t0 >> 16) & 0xff] & 0x00ff0000) ^
-		(Te4[(t1 >>  8) & 0xff] & 0x0000ff00) ^
-		(Te4[(t2 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[51];
-	PUTU32(ciphertext + 12, s3);
+		t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[ 4];
+		t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[ 5];
+		t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[ 6];
+		t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[ 7];
+		
+		s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[ 8];
+		s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[ 9];
+		s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[10];
+		s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[11];
+		
+		t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[12];
+		t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[13];
+		t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[14];
+		t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[15];
+		
+		s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[16];
+		s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[17];
+		s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[18];
+		s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[19];
+		
+		t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[20];
+		t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[21];
+		t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[22];
+		t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[23];
+		
+		s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[24];
+		s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[25];
+		s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[26];
+		s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[27];
+		
+		t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[28];
+		t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[29];
+		t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[30];
+		t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[31];
+		
+		s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >>  8) & 0xff] ^ Te3[t3 & 0xff] ^ ctx->roundkey[32];
+		s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >>  8) & 0xff] ^ Te3[t0 & 0xff] ^ ctx->roundkey[33];
+		s2 = Te0[t2 >> 24] ^ Te1[(t3 >> 16) & 0xff] ^ Te2[(t0 >>  8) & 0xff] ^ Te3[t1 & 0xff] ^ ctx->roundkey[34];
+		s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >>  8) & 0xff] ^ Te3[t2 & 0xff] ^ ctx->roundkey[35];
+		
+		t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >>  8) & 0xff] ^ Te3[s3 & 0xff] ^ ctx->roundkey[36];
+		t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >>  8) & 0xff] ^ Te3[s0 & 0xff] ^ ctx->roundkey[37];
+		t2 = Te0[s2 >> 24] ^ Te1[(s3 >> 16) & 0xff] ^ Te2[(s0 >>  8) & 0xff] ^ Te3[s1 & 0xff] ^ ctx->roundkey[38];
+		t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >>  8) & 0xff] ^ Te3[s2 & 0xff] ^ ctx->roundkey[39];
+		
+		// Apply the final round and map the cipher state to a byte array block: 
+		s0 = 
+			(Te4[(t0 >> 24) & 0xff] & 0xff000000) ^ 
+			(Te4[(t1 >> 16) & 0xff] & 0x00ff0000) ^ 
+			(Te4[(t2 >>  8) & 0xff] & 0x0000ff00) ^ 
+			(Te4[(t3 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[40];
+		PUTU32(ciphertext + offset, s0);
+		
+		s1 = 
+			(Te4[(t1 >> 24) & 0xff] & 0xff000000) ^
+			(Te4[(t2 >> 16) & 0xff] & 0x00ff0000) ^
+			(Te4[(t3 >>  8) & 0xff] & 0x0000ff00) ^
+			(Te4[(t0 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[41];
+		PUTU32(ciphertext + offset + 4, s1);
+		
+		s2 = 
+			(Te4[(t2 >> 24) & 0xff] & 0xff000000) ^
+			(Te4[(t3 >> 16) & 0xff] & 0x00ff0000) ^
+			(Te4[(t0 >>  8) & 0xff] & 0x0000ff00) ^
+			(Te4[(t1 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[42];
+		PUTU32(ciphertext + offset + 8, s2);
+		
+		s3 = 
+			(Te4[(t3 >> 24) & 0xff] & 0xff000000) ^
+			(Te4[(t0 >> 16) & 0xff] & 0x00ff0000) ^
+			(Te4[(t1 >>  8) & 0xff] & 0x0000ff00) ^
+			(Te4[(t2 >>  0) & 0xff] & 0x000000ff) ^ ctx->roundkey[43];
+		PUTU32(ciphertext + offset + 12, s3);
+	}
+	return offset;
 }
 
-static inline void AES_Decrypt(const AES_CTX *ctx, const uint8_t ciphertext[AES_BLOCK_SIZE], uint8_t plaintext[AES_BLOCK_SIZE]) {
-	uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
+static inline uint32_t AES_Decrypt(const AES_CTX *ctx, const uint8_t *ciphertext, uint32_t size, uint8_t *plaintext) {
+	uint32_t s0, s1, s2, s3, t0, t1, t2, t3, offset;
 	
-	s0 = GETU32(ciphertext) ^ ctx->roundkey[0];
-	s1 = GETU32(ciphertext + 4) ^ ctx->roundkey[1];
-	s2 = GETU32(ciphertext + 8) ^ ctx->roundkey[2];
-	s3 = GETU32(ciphertext + 12) ^ ctx->roundkey[3];
-	
-	t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[ 4];
-	t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[ 5];
-	t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[ 6];
-	t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[ 7];
-	
-	s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[ 8];
-	s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[ 9];
-	s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[10];
-	s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[11];
-	
-	t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[12];
-	t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[13];
-	t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[14];
-	t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[15];
-	
-	s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[16];
-	s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[17];
-	s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[18];
-	s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[19];
-	
-	t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[20];
-	t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[21];
-	t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[22];
-	t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[23];
-	
-	s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[24];
-	s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[25];
-	s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[26];
-	s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[27];
-	
-	t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[28];
-	t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[29];
-	t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[30];
-	t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[31];
-	
-	s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[32];
-	s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[33];
-	s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[34];
-	s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[35];
-	
-	t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[36];
-	t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[37];
-	t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[38];
-	t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[39];
-	
-	s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[40];
-	s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[41];
-	s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[42];
-	s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[43];
-	
-	t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[44];
-	t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[45];
-	t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[46];
-	t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[47];
-	
-	s0 = 
-		(Td4[(t0 >> 24) & 0xff] & 0xff000000) ^
-		(Td4[(t3 >> 16) & 0xff] & 0x00ff0000) ^
-		(Td4[(t2 >>  8) & 0xff] & 0x0000ff00) ^
-		(Td4[(t1 >>  0) & 0xff] & 0x000000ff) ^
-		ctx->roundkey[48];
-	PUTU32(plaintext, s0);
-	
-	s1 = 
-		(Td4[(t1 >> 24) & 0xff] & 0xff000000) ^
-		(Td4[(t0 >> 16) & 0xff] & 0x00ff0000) ^
-		(Td4[(t3 >>  8) & 0xff] & 0x0000ff00) ^
-		(Td4[(t2 >>  0) & 0xff] & 0x000000ff) ^
-		ctx->roundkey[49];
-	PUTU32(plaintext + 4, s1);
-	
-	s2 = 
-		(Td4[(t2 >> 24) & 0xff] & 0xff000000) ^
-		(Td4[(t1 >> 16) & 0xff] & 0x00ff0000) ^
-		(Td4[(t0 >>  8) & 0xff] & 0x0000ff00) ^
-		(Td4[(t3 >>  0) & 0xff] & 0x000000ff) ^
-		ctx->roundkey[50];
-	PUTU32(plaintext + 8, s2);
-	
-	s3 = 
-		(Td4[(t3 >> 24) & 0xff] & 0xff000000) ^
-		(Td4[(t2 >> 16) & 0xff] & 0x00ff0000) ^
-		(Td4[(t1 >>  8) & 0xff] & 0x0000ff00) ^
-		(Td4[(t0 >>  0) & 0xff] & 0x000000ff) ^
-		ctx->roundkey[51];
-	PUTU32(plaintext + 12, s3);
+	for (offset = 0; offset + AES_BLOCK_SIZE <= size; offset += AES_BLOCK_SIZE) {
+		s0 = GETU32(ciphertext + offset) ^ ctx->roundkey[0];
+		s1 = GETU32(ciphertext + offset + 4) ^ ctx->roundkey[1];
+		s2 = GETU32(ciphertext + offset + 8) ^ ctx->roundkey[2];
+		s3 = GETU32(ciphertext + offset + 12) ^ ctx->roundkey[3];
+		
+		t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[ 4];
+		t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[ 5];
+		t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[ 6];
+		t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[ 7];
+		
+		s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[ 8];
+		s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[ 9];
+		s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[10];
+		s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[11];
+		
+		t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[12];
+		t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[13];
+		t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[14];
+		t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[15];
+		
+		s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[16];
+		s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[17];
+		s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[18];
+		s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[19];
+		
+		t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[20];
+		t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[21];
+		t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[22];
+		t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[23];
+		
+		s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[24];
+		s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[25];
+		s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[26];
+		s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[27];
+		
+		t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[28];
+		t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[29];
+		t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[30];
+		t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[31];
+		
+		s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >>  8) & 0xff] ^ Td3[t1 & 0xff] ^ ctx->roundkey[32];
+		s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >>  8) & 0xff] ^ Td3[t2 & 0xff] ^ ctx->roundkey[33];
+		s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >>  8) & 0xff] ^ Td3[t3 & 0xff] ^ ctx->roundkey[34];
+		s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >>  8) & 0xff] ^ Td3[t0 & 0xff] ^ ctx->roundkey[35];
+		
+		t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >>  8) & 0xff] ^ Td3[s1 & 0xff] ^ ctx->roundkey[36];
+		t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >>  8) & 0xff] ^ Td3[s2 & 0xff] ^ ctx->roundkey[37];
+		t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >>  8) & 0xff] ^ Td3[s3 & 0xff] ^ ctx->roundkey[38];
+		t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >>  8) & 0xff] ^ Td3[s0 & 0xff] ^ ctx->roundkey[39];
+		
+		s0 = 
+			(Td4[(t0 >> 24) & 0xff] & 0xff000000) ^ 
+			(Td4[(t3 >> 16) & 0xff] & 0x00ff0000) ^ 
+			(Td4[(t2 >>  8) & 0xff] & 0x0000ff00) ^ 
+			(Td4[(t1 >>  0) & 0xff] & 0x000000ff) ^ 
+				ctx->roundkey[40];
+		PUTU32(plaintext + offset, s0);
+		
+		s1 = 
+			(Td4[(t1 >> 24) & 0xff] & 0xff000000) ^
+			(Td4[(t0 >> 16) & 0xff] & 0x00ff0000) ^
+			(Td4[(t3 >>  8) & 0xff] & 0x0000ff00) ^
+			(Td4[(t2 >>  0) & 0xff] & 0x000000ff) ^
+				ctx->roundkey[41];
+		PUTU32(plaintext + offset + 4, s1);
+		
+		s2 = 
+			(Td4[(t2 >> 24) & 0xff] & 0xff000000) ^
+			(Td4[(t1 >> 16) & 0xff] & 0x00ff0000) ^
+			(Td4[(t0 >>  8) & 0xff] & 0x0000ff00) ^
+			(Td4[(t3 >>  0) & 0xff] & 0x000000ff) ^
+				ctx->roundkey[42];
+		PUTU32(plaintext + offset + 8, s2);
+		
+		s3 = 
+			(Td4[(t3 >> 24) & 0xff] & 0xff000000) ^
+			(Td4[(t2 >> 16) & 0xff] & 0x00ff0000) ^
+			(Td4[(t1 >>  8) & 0xff] & 0x0000ff00) ^
+			(Td4[(t0 >>  0) & 0xff] & 0x000000ff) ^
+				ctx->roundkey[43];
+		PUTU32(plaintext + offset + 12, s3);
+	}
+	return offset;
+}
+
+static inline void AES_CTX_Free(AES_CTX *ctx) {
+	memset(ctx->roundkey, 0, 176);
 }
 
 #endif
