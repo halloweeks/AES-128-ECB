@@ -14,12 +14,12 @@ This GitHub repository contains a standard implementation of the Advanced Encryp
 
 To utilize this standard AES-128 ECB implementation, follow the instructions provided below:
 
-### Including "AES.h" Header
+### Including "AES_128_ECB.h" Header
 
-Before utilizing the AES encryption and decryption functions, ensure that you've included the "AES.h" header in your code. This header provides access to the AES functionality.
+Before utilizing the AES encryption and decryption functions, ensure that you've included the "AES_128_ECB.h" header in your code. This header provides access to the AES functionality.
 
 ```c
-#include "AES.h"
+#include "AES_128_ECB.h"
 ```
 
 ### AES Context Initialization
@@ -76,7 +76,7 @@ Here's an example code snippet in C for using this standard AES-128 ECB implemen
 
 ```c
 #include <stdio.h>
-#include "AES.h"
+#include "AES_128_ECB.h"
 
 void output(const char* title, uint8_t *data) {
 	printf("%s", title);
