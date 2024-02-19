@@ -40,10 +40,10 @@ AES_EncryptInit(&ctx, key);
 
 ### Encryption Function
 
-The AES encryption function allows you to encrypt a single blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide data blocks of precisely 16 bytes each for encryption.
+The AES encryption function allows you to encrypt a single blocks of data, and this implementation does not support padding. Ensure that you provide data blocks of precisely 16 bytes.
 
 ```c
-AES_Encrypt(&ctx, plaintext, plaintext_size, ciphertext);
+AES_Encrypt(&ctx, plaintext, ciphertext);
 ```
 
 ### Initialize Decryption
@@ -56,10 +56,10 @@ AES_DecryptInit(&ctx, key);
 
 ### Decryption Function
 
-The AES decryption function allows you to decrypt a single blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide ciphertext blocks of precisely 16 bytes each for decryption.
+The AES decryption function allows you to decrypt a single blocks of data, and this implementation does not support padding. Ensure that you provide ciphertext blocks of precisely 16 bytes.
 
 ```c
-AES_Decrypt(&ctx, ciphertext, ciphertext_size, plaintext);
+AES_Decrypt(&ctx, ciphertext, plaintext);
 ```
 
 ### Encryption and Decryption Function Completion
