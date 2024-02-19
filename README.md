@@ -78,39 +78,56 @@ Here's an example code snippet in C for using this standard AES-128 ECB implemen
 #include <stdio.h>
 #include "AES_128_ECB.h"
 
-void output(const char* title, uint8_t *data) {
-	printf("%s", title);
-	for (uint8_t index = 0; index < AES_BLOCK_SIZE; index++) {
-		printf("%02X", data[index]);
-	}
-	printf("\n");
+// Function to print the title and hexadecimal representation of data
+void output(const char *title, const unsigned char *data, unsigned int size) {
+    printf("%s", title);
+    for (unsigned int index = 0; index < size; index++) {
+        printf("%02X", data[index]);
+    }
+    printf("\n");
 }
 
 int main(int argc, const char *argv[]) {
-	uint8_t key[AES_KEY_SIZE];
-	uint8_t data[AES_BLOCK_SIZE];
-	
-	memcpy(key, "This is aes key!", AES_KEY_SIZE);
-	memcpy(data, "This is test msg", AES_BLOCK_SIZE);
-	
-	output("Original:  ", data);
-	
-	AES_CTX ctx;
-	
-	AES_EncryptInit(&ctx, key);
-	
-	AES_Encrypt(&ctx, data, data);
-	
-	output("Encrypted: ", data);
-	
-	AES_DecryptInit(&ctx, key);
-	
-	AES_Decrypt(&ctx, data, data);
-	
-	output("Decrypted: ", data);
-	
-	AES_CTX_Free(&ctx);
-	return 0;
+    // AES-128 key (16 bytes)
+    unsigned char key[AES_KEY_SIZE] = {
+        0x49, 0x2F, 0xA8, 0x1E, 0xD7, 0x82, 0x4C, 0x93,
+        0x36, 0x7B, 0xC1, 0xF8, 0xA0, 0xE5, 0x1A, 0x5D
+    };
+
+    // Data block to be encrypted (16 bytes)
+    unsigned char data[AES_BLOCK_SIZE] = {
+        0x54, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20,
+        0x61, 0x6E, 0x20, 0x64, 0x61, 0x74, 0x61, 0x21
+    };
+
+    // Print original data
+    output("ori: 0x", data, 16);
+
+    // Initialize AES context
+    AES_CTX ctx;
+
+    // Initialize encryption with the provided key
+    AES_EncryptInit(&ctx, key);
+
+    // Perform encryption
+    AES_Encrypt(&ctx, data, data);
+
+    // Print encrypted data
+    output("enc: 0x", data, 16);
+
+    // Initialize decryption with the same key
+    AES_DecryptInit(&ctx, key);
+
+    // Perform decryption
+    AES_Decrypt(&ctx, data, data);
+
+    // Print decrypted data
+    output("dec: 0x", data, 16);
+
+    // Clean up: zero out the round key array for security purposes
+    AES_CTX_Free(&ctx);
+
+    return 0;
 }
 ```
 
