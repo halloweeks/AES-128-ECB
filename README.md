@@ -4,7 +4,7 @@ This GitHub repository contains a standard implementation of the Advanced Encryp
 
 ## Features
 
-- **AES-128 ECB:** This implementation adheres to the AES-128 ECB encryption mode, which encrypts individual 16-byte blocks of data independently. It supports the encryption of multiple 16-byte blocks in sequence.
+- **AES-128 ECB:** This implementation adheres to the AES-128 ECB encryption mode, which encrypts individual 16-byte blocks of data independently.
 
 - **Fixed Block Size:** The algorithm enforces a fixed block size of 16 bytes, and it does not support padding. Input data must be exactly 16 bytes in length for each block.
 
