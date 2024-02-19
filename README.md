@@ -40,7 +40,7 @@ AES_EncryptInit(&ctx, key);
 
 ### Encryption Function
 
-The AES encryption function allows you to encrypt multiple 16-byte blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide data blocks of precisely 16 bytes each for encryption.
+The AES encryption function allows you to encrypt a single blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide data blocks of precisely 16 bytes each for encryption.
 
 ```c
 AES_Encrypt(&ctx, plaintext, plaintext_size, ciphertext);
@@ -56,7 +56,7 @@ AES_DecryptInit(&ctx, key);
 
 ### Decryption Function
 
-The AES decryption function allows you to decrypt multiple 16-byte blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide ciphertext blocks of precisely 16 bytes each for decryption.
+The AES decryption function allows you to decrypt a single blocks of data. Each block must be exactly 16 bytes in size, and this implementation does not support padding. Ensure that you provide ciphertext blocks of precisely 16 bytes each for decryption.
 
 ```c
 AES_Decrypt(&ctx, ciphertext, ciphertext_size, plaintext);
@@ -99,13 +99,13 @@ int main(int argc, const char *argv[]) {
 	
 	AES_EncryptInit(&ctx, key);
 	
-	AES_Encrypt(&ctx, data, AES_BLOCK_SIZE, data);
+	AES_Encrypt(&ctx, data, data);
 	
 	output("Encrypted: ", data);
 	
 	AES_DecryptInit(&ctx, key);
 	
-	AES_Decrypt(&ctx, data, AES_BLOCK_SIZE, data);
+	AES_Decrypt(&ctx, data, data);
 	
 	output("Decrypted: ", data);
 	
