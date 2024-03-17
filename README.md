@@ -131,6 +131,102 @@ int main(int argc, const char *argv[]) {
 }
 ```
 
+### Example Code (main.c)
+
+Here's an example code snippet in C demonstrating AES-128 ECB encryption and decryption with PKCS#7 padding support:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include "AES_128_ECB.h"
+
+// Encryption data with padding PKCS7
+unsigned long EncryptData(unsigned char *data, unsigned long size, const unsigned char *key) {
+	unsigned char padding_size = AES_BLOCK_SIZE - (size % AES_BLOCK_SIZE);
+	unsigned long offset = 0;
+	
+	for (unsigned char index = 0; index < padding_size; index++) {
+		data[size + index] = padding_size;
+	}
+	
+	AES_CTX ctx;
+	AES_EncryptInit(&ctx, key);
+	
+	while (offset < size + padding_size) {
+		AES_Encrypt(&ctx, data + offset, data + offset);
+		offset += AES_BLOCK_SIZE;
+	}
+	
+	AES_CTX_Free(&ctx);
+	
+	return offset;
+}
+
+// Decryption data with padding PKCS7
+unsigned long DecryptData(unsigned char *data, unsigned long size, const unsigned char *key) {
+	unsigned char padding_size = 0;
+	unsigned long offset = 0;
+	
+	AES_CTX ctx;
+	AES_DecryptInit(&ctx, key);
+	
+	while (offset < size) {
+		AES_Decrypt(&ctx, data + offset, data + offset);
+		offset += AES_BLOCK_SIZE;
+	}
+	
+	AES_CTX_Free(&ctx);
+	
+	padding_size = data[size - 1];
+	
+	if (padding_size > 0 && padding_size <= AES_BLOCK_SIZE) {
+		unsigned char valid_padding = 1;
+		for (unsigned char i = size - padding_size; i < size; ++i) {
+			if (data[i] != padding_size) {
+				valid_padding = 0;
+				break;
+			}
+		}
+		
+		if (valid_padding) {
+			return size - padding_size;
+		}
+	}
+	return size;
+}
+
+void output(const char *title, const unsigned char *data, unsigned int size) {
+    printf("%s", title);
+    for (unsigned int index = 0; index < size; index++) {
+        printf("%02X", data[index]);
+    }
+    printf("\n");
+}
+
+int main(int argc, const char *argv[]) {
+	unsigned char data[32];
+	unsigned char key[16];
+	int data_len = 0;
+	
+	memcpy(data, "halloweeks", 10);
+	memset(key, 0x69, 16);
+	data_len = 10; // original data length
+	
+	output("ori: 0x", data, data_len);
+	
+	data_len = EncryptData(data, data_len, key);
+	
+	output("enc: 0x", data, data_len);
+	
+	data_len = DecryptData(data, data_len, key);
+	
+	output("dec: 0x", data, data_len);
+	return 0;
+}
+```
+
 ## Contributions
 
 Contributions and feedback are welcome! If you find issues or have ideas for improvements, please open an issue or submit a pull request.
