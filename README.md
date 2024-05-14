@@ -140,14 +140,15 @@ Here's an example code snippet in C demonstrating AES-128 ECB encryption and dec
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 #include "AES_128_ECB.h"
 
 // Encryption data with padding PKCS7
-unsigned long EncryptData(unsigned char *data, unsigned long size, const unsigned char *key) {
-	unsigned char padding_size = AES_BLOCK_SIZE - (size % AES_BLOCK_SIZE);
-	unsigned long offset = 0;
+uint32_t EncryptData(uint8_t *data, uint32_t size, const uint8_t *key) {
+	uint8_t padding_size = AES_BLOCK_SIZE - (size % AES_BLOCK_SIZE);
+	uint32_t offset = 0;
 	
-	for (unsigned char index = 0; index < padding_size; index++) {
+	for (uint8_t index = 0; index < padding_size; index++) {
 		data[size + index] = padding_size;
 	}
 	
@@ -165,9 +166,8 @@ unsigned long EncryptData(unsigned char *data, unsigned long size, const unsigne
 }
 
 // Decryption data with padding PKCS7
-unsigned long DecryptData(unsigned char *data, unsigned long size, const unsigned char *key) {
-	unsigned char padding_size = 0;
-	unsigned long offset = 0;
+uint32_t DecryptData(uint8_t *data, uint32_t size, const uint8_t *key) {
+	uint32_t offset = 0;
 	
 	AES_CTX ctx;
 	AES_DecryptInit(&ctx, key);
@@ -179,25 +179,10 @@ unsigned long DecryptData(unsigned char *data, unsigned long size, const unsigne
 	
 	AES_CTX_Free(&ctx);
 	
-	padding_size = data[size - 1];
-	
-	if (padding_size > 0 && padding_size <= AES_BLOCK_SIZE) {
-		unsigned char valid_padding = 1;
-		for (unsigned char i = size - padding_size; i < size; ++i) {
-			if (data[i] != padding_size) {
-				valid_padding = 0;
-				break;
-			}
-		}
-		
-		if (valid_padding) {
-			return size - padding_size;
-		}
-	}
-	return size;
+	return size - data[size - 1];
 }
 
-void output(const char *title, const unsigned char *data, unsigned int size) {
+void output(const char *title, const uint8_t *data, unsigned int size) {
     printf("%s", title);
     for (unsigned int index = 0; index < size; index++) {
         printf("%02X", data[index]);
@@ -206,8 +191,8 @@ void output(const char *title, const unsigned char *data, unsigned int size) {
 }
 
 int main(int argc, const char *argv[]) {
-	unsigned char data[32];
-	unsigned char key[16];
+	uint8_t data[32];
+	uint8_t key[16];
 	int data_len = 0;
 	
 	memcpy(data, "halloweeks", 10);
