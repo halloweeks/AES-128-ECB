@@ -146,8 +146,9 @@ Here's an example code snippet in C demonstrating AES-128 ECB encryption and dec
 // Encryption data with padding PKCS7
 uint32_t EncryptData(uint8_t *data, uint32_t size, const uint8_t *key) {
 	uint8_t padding_size = AES_BLOCK_SIZE - (size % AES_BLOCK_SIZE);
-	uint32_t offset = 0;
-	
+	uint32_t data_size = size + padding_size;
+
+        // adding padding value
 	for (uint8_t index = 0; index < padding_size; index++) {
 		data[size + index] = padding_size;
 	}
@@ -155,32 +156,29 @@ uint32_t EncryptData(uint8_t *data, uint32_t size, const uint8_t *key) {
 	AES_CTX ctx;
 	AES_EncryptInit(&ctx, key);
 	
-	while (offset < size + padding_size) {
+	for (uint32_t offset = 0; offset < data_size; offset += AES_BLOCK_SIZE) {
 		AES_Encrypt(&ctx, data + offset, data + offset);
-		offset += AES_BLOCK_SIZE;
 	}
 	
 	AES_CTX_Free(&ctx);
 	
-	return offset;
+	return data_size;
 }
 
 // Decryption data with padding PKCS7
 uint32_t DecryptData(uint8_t *data, uint32_t size, const uint8_t *key) {
-	uint32_t offset = 0;
-	
 	AES_CTX ctx;
 	AES_DecryptInit(&ctx, key);
 	
-	while (offset < size) {
+	for (uint32_t offset = 0; offset < size; offset += AES_BLOCK_SIZE) {
 		AES_Decrypt(&ctx, data + offset, data + offset);
-		offset += AES_BLOCK_SIZE;
 	}
 	
 	AES_CTX_Free(&ctx);
 	
 	return size - data[size - 1];
 }
+
 
 void output(const char *title, const uint8_t *data, unsigned int size) {
     printf("%s", title);
