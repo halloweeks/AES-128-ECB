@@ -40,10 +40,10 @@ AES_EncryptInit(&ctx, key);
 
 ### Encryption Function
 
-The AES encryption function allows you to encrypt a single blocks of data, and this implementation does not support padding. Ensure that you provide data blocks of precisely 16 bytes.
+The AES encryption function allows you to encrypt a blocks of data, and this implementation does not support padding. Ensure that you provide data blocks of precisely 16 bytes.
 
 ```c
-AES_Encrypt(&ctx, plaintext, ciphertext);
+AES_Encrypt(&ctx, plaintext, plaintext_length, ciphertext);
 ```
 
 ### Initialize Decryption
@@ -56,10 +56,10 @@ AES_DecryptInit(&ctx, key);
 
 ### Decryption Function
 
-The AES decryption function allows you to decrypt a single blocks of data, and this implementation does not support padding. Ensure that you provide ciphertext blocks of precisely 16 bytes.
+The AES decryption function allows you to decrypt a blocks of data, and this implementation does not support padding. Ensure that you provide ciphertext blocks of precisely 16 bytes.
 
 ```c
-AES_Decrypt(&ctx, ciphertext, plaintext);
+AES_Decrypt(&ctx, ciphertext, ciphertext_length, plaintext);
 ```
 
 ### Encryption and Decryption Function Completion
@@ -110,7 +110,7 @@ int main(int argc, const char *argv[]) {
     AES_EncryptInit(&ctx, key);
 
     // Perform encryption
-    AES_Encrypt(&ctx, data, data);
+    AES_Encrypt(&ctx, data, 16, data);
 
     // Print encrypted data
     output("enc: 0x", data, 16);
@@ -119,7 +119,7 @@ int main(int argc, const char *argv[]) {
     AES_DecryptInit(&ctx, key);
 
     // Perform decryption
-    AES_Decrypt(&ctx, data, data);
+    AES_Decrypt(&ctx, data, 16, data);
 
     // Print decrypted data
     output("dec: 0x", data, 16);
